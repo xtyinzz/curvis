@@ -1,0 +1,6 @@
+/home/xiong336/project/curvis/build/CMakeFiles/edit_cache.dir
+/home/xiong336/project/curvis/build/CMakeFiles/rebuild_cache.dir
+/home/xiong336/project/curvis/build/test/CMakeFiles/test.dir
+/home/xiong336/project/curvis/build/test/CMakeFiles/tmp.dir
+/home/xiong336/project/curvis/build/test/CMakeFiles/edit_cache.dir
+/home/xiong336/project/curvis/build/test/CMakeFiles/rebuild_cache.dir
