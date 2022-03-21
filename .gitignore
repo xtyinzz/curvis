@@ -1,8 +1,13 @@
 /data/
-pycurvis/log/
+
+pycurvis/data/*
+!pycurvis/data/*.py
+!pycurvis/data/*.ipynb
+
+pycurvis/log/*
 !pycurvis/log/*.py
 !pycurvis/log/*.ipynb
 
-pycurvis/eval/
+pycurvis/eval/*
 !pycurvis/eval/*.py
 !pycurvis/eval/*.ipynb
