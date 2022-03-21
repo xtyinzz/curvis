@@ -54,10 +54,10 @@ class MLP(nn.Module):
       in_dim = pe_dim
 
     # intermediate layers
-    hidden_dims.insert(0, in_dim)
-    for i in range(len(hidden_dims)-1):
+    self.net.append( LinearLayer(in_dim, hidden_dims[0], use_norm=True) )
+    for i in range(1, len(hidden_dims)):
       self.net.append(
-        LinearLayer(hidden_dims[i], hidden_dims[i+1], use_norm=True)
+        LinearLayer(hidden_dims[i-1], hidden_dims[i], use_norm=True)
       )
     # final layer with Tanh
     self.net.append(

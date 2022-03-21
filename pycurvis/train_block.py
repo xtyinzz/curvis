@@ -10,7 +10,7 @@ from cfg.configs import Config
 from util.utils import report_gpumem
 import yaml
 import signal
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 '''
 TODO:
@@ -19,7 +19,7 @@ TODO:
 
 def save_checkpoint(model, optim, epoch, batch, loss, log_dir):
   loss_str = f'{float(loss):.2e}'
-  pckpt = os.path.join(log_dir, f'ckpt_{epoch:03}_{batch:03}_{loss_str}')
+  pckpt = os.path.join(log_dir, f'ckpt_{epoch:04}_{batch:04}_{loss_str}')
   torch.save({
               'model' : model.state_dict(),
               'optim' : optim.state_dict(),
@@ -33,7 +33,7 @@ def save_checkpoint(model, optim, epoch, batch, loss, log_dir):
 
 def save_checkpoint_block(models, optims, epoch, batch, loss, log_dir):
   loss_str = f'{float(loss):.2e}'
-  pckpt = os.path.join(log_dir, f'ckpt_{epoch:03}_{batch:03}_{loss_str}')
+  pckpt = os.path.join(log_dir, f'ckpt_{epoch:04}_{batch:04}_{loss_str}')
   torch.save({
               'models' : [model.state_dict() for model in models],
               'optims' : [optim.state_dict() for optim in optims],
@@ -71,7 +71,7 @@ def resume_checkpoint_block(ckpt_path, models, optims):
   device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
   ckpt = torch.load(ckpt_path, map_location=device)
   # replace state_dict with actual object
-  for i in range(len(models)):
+  for i in trange(len(models)):
     models[i].load_state_dict(ckpt['models'][i])
     optims[i].load_state_dict(ckpt['optims'][i])
   return ckpt['epoch']
@@ -116,21 +116,24 @@ def main():
   # model, optim, loss
   log_dir = config.config['model']['log_dir']
   model_param = config.get_model_param()
-  models = [MLP(**model_param) for i in range(len(dataset))]
-  optims = [config.get_optim(model) for model in models]
+  models = [ MLP(**model_param) for i in range(len(dataset)) ]
+  optims = [ config.get_optim(model) for model in models ]
   lossl1 = nn.L1Loss()
   lossl2 = nn.MSELoss()
   lossfn = lossl2
 
   device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-  for model in models:
+  print("moving models to device")
+  for model in tqdm(models):
     model.to(device)
 
   # resume training with ckpt={ model:, optim:, epoch:, loss: }if set
   start_epoch = 0
   if args.resume:
     pmodel = os.path.join(log_dir, cfg_train['resume']['ckpt'])
+    print("loading checkpoint")
     start_epoch = resume_checkpoint_block(pmodel, models, optims)
+    # save_checkpoint_block(models, optims, start_epoch, 1921, 3.02e-1, log_dir)
 
   print("LR: ", config.config['optim']['param']['lr'])
 
@@ -145,13 +148,16 @@ def main():
   
   print_bi = 0
   print_train_loss = 0
-  print_step = batch_log_step // 20
+  print_valid_loss = 0
+  print_step = batch_log_step // 10
+
   for epoch in range(start_epoch, max_epoch):
     print(f"epoch {epoch} started", flush=True)
     # train
     # eloss = 0
-    [model.train() for model in models]
+
     for bi, data in enumerate(train_loader):
+      [model.train() for model in models]
       in_data, tar_data = data[0].to(device), data[1].to(device)
       in_data_val, tar_data_val = data[2].to(device), data[3].to(device)
 
@@ -164,6 +170,15 @@ def main():
       loss.backward()
       optims[bi].step()
 
+
+      # validate block:
+      [model.eval() for model in models]
+      with torch.no_grad():
+        pred_val = models[bi](in_data_val)
+      loss_val = lossfn(pred_val, tar_data_val)
+      ckpt_valid_loss += loss_val.item()
+      print_valid_loss += loss_val.item()
+
       # eloss += loss.item()
       ckpt_train_loss += loss.item()
       print_train_loss += loss.item()
@@ -172,16 +187,13 @@ def main():
       print_bi += 1
       if print_bi % print_step == 0:
         print_train_loss /= print_bi
-        print(f'    -BATCH: epoch{epoch:03}-batch{bi:03}-train-loss: {print_train_loss}', flush=True)
+        print_valid_loss /= print_bi
+        print(f'    -BATCH: epoch{epoch:03}-batch{bi:03}-train-loss: {print_train_loss:.4e}   ', end='')
+        print(f'valid_loss: {print_valid_loss:.4e}', flush=True)
         print_bi = 0
         print_train_loss = 0
-      
-      # validate block:
-      [model.eval() for model in models]
-      with torch.no_grad():
-        pred_val = models[bi](in_data_val)
-      loss_val = lossfn(pred_val, tar_data_val)
-      ckpt_valid_loss += loss_val.item()
+        print_valid_loss = 0
+    
       
       # validate and save ckpt
       ckpt_bi += 1

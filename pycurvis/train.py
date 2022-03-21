@@ -123,8 +123,8 @@ def main():
 
     # train
     # eloss = 0
-    model.train()
     for bi, data in enumerate(train_loader):
+      model.train()
       in_data, tar_data = data[0].to(device), data[1].to(device)
 
       # forward

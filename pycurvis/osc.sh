@@ -1,11 +1,11 @@
 #!/bin/bash
 #
-#SBATCH --job-name=cat2sph-100epoch-block-continue
-#SBATCH --output="log/osc/block_job%j.out"
-#SBATCH --signal=USR1@120
+#SBATCH --job-name=cat2sph-10000epoch-block_half
+#SBATCH --output="log/osc/block_half_job%j.out"
+#SBATCH --signal=USR1@20
 #
-#SBATCH --nodes=1 --ntasks-per-node=8 --gpus-per-node=1 --mem=32gb
-#SBATCH --time=6:00:00
+#SBATCH --nodes=1 --ntasks-per-node=1 --gpus-per-node=1
+#SBATCH --time=3:00:00
 #
 #SBATCH --account=PAS0027
 
@@ -18,6 +18,6 @@ module load miniconda3
 source activate vis
 
 # execute job
-srun python train_block.py --nncfg=nn_block.yaml --resume
+srun python train_block.py --nncfg=nn_block_half.yaml --resume
 # python test.py --testcfg=cfg/nntest_curv.yaml
 # python mem.py
